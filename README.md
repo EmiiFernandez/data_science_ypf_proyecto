@@ -91,7 +91,7 @@ Para comprobar que los segmentos no estén definidos solamente por valores anóm
 
 La comparación informa las métricas internas de clustering (silhouette, Davies-Bouldin y Calinski-Harabasz), los tamaños de los grupos y el porcentaje de clientes cuya asignación cambia. Como los números de cluster son etiquetas arbitrarias, las asignaciones se alinean antes de calcular ese porcentaje.
 
-También se evalúa la estabilidad de la solución tratada repitiendo KMeans con varias semillas y calculando el **Adjusted Rand Index (ARI)**. Los perfiles se complementan con mediana, percentil 95 y percentil 99 para evitar que los promedios oculten colas largas en `RevolvingUtilizationOfUnsecuredLines`, `DebtRatio` o `MonthlyIncome`.
+También se evalúa la estabilidad de la solución tratada repitiendo KMeans con varias semillas y calculando el **Adjusted Rand Index (ARI)** para todos los pares de corridas. Los perfiles se complementan con mediana, percentil 95 y percentil 99 para evitar que los promedios oculten colas largas en `RevolvingUtilizationOfUnsecuredLines`, `DebtRatio` o `MonthlyIncome`.
 
 Detalle completo en [`notebooks/03_modelo_no_supervisado.ipynb`](notebooks/03_modelo_no_supervisado.ipynb).
 
