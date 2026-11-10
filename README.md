@@ -14,7 +14,7 @@ Es un problema de **scoring de riesgo crediticio** con un fuerte desbalance de c
 
 ## Criterio metodológico
 
-- **El test se usa una única vez, al final.** La elección del modelo, los hiperparámetros y el umbral de decisión se toman con validación cruzada (5 folds estratificados) sobre el set de entrenamiento.
+- **El test se usa una única vez, al final.** La elección del modelo, los hiperparámetros y el umbral de decisión se toman sobre train. La evaluación principal usa validación cruzada anidada de 3 folds: una CV interna selecciona hiperparámetros y umbral dentro de cada fold, y una CV externa estima el rendimiento fuera de muestra. Se usa una grilla reducida para que el experimento sea reproducible en equipos modestos. Esta reducción es una decisión práctica para poder avanzar con un equipo limitado, no la configuración ideal para un caso real.
 - **Sin fuga de información.** El notebook 01 solo aplica reglas fijas que no aprenden de los datos (flags y valores imposibles a NaN). La imputación con la mediana se hace en el notebook 02, dentro de un `Pipeline`, por lo que se calcula solo con datos de entrenamiento.
 - **División estratificada:** train (120.000) y test (30.000) conservan la misma proporción de morosos.
 
@@ -46,21 +46,21 @@ Se compararon varios modelos con la ROC-AUC de validación cruzada sobre train:
 | Regresión Logística | 0,855 |
 | Árbol de Decisión | 0,842 |
 | Random Forest (sin ajustar) | 0,839 |
-| **Random Forest + GridSearchCV** | **0,862** |
+| **Random Forest + GridSearchCV** | Se actualiza al ejecutar la grilla reducida |
 
-El mejor modelo es un **Random Forest** ajustado con `GridSearchCV` (`n_estimators=400`, `max_depth=10`, `min_samples_leaf=20`). El hiperparámetro con más impacto fue `min_samples_leaf`: exigir al menos 20 clientes por hoja evita que los árboles memoricen el entrenamiento.
+El mejor modelo se selecciona con un **Random Forest** ajustado mediante `GridSearchCV`. Para mantener el experimento reproducible en equipos modestos, la grilla reducida usa `n_estimators=100`, `max_depth` entre 8 y 10, y `min_samples_leaf` entre 10 y 20, con 3 folds en el ajuste y en la validación cruzada anidada. En la configuración original se exploraba una grilla más amplia con 5 folds, que es la alternativa preferible en una práctica real porque permite una búsqueda más exhaustiva y una estimación más estable, a costa de un tiempo de ejecución considerablemente mayor. El hiperparámetro con más impacto esperado es `min_samples_leaf`, porque exigir más clientes por hoja reduce el sobreajuste. Los valores finales deben actualizarse después de ejecutar la grilla reducida.
 
-**Umbral de decisión:** elegido con probabilidades "fuera de fold" (`cross_val_predict`) sobre train, maximizando F2 (el recall pesa el doble, porque no detectar a un moroso cuesta más que rechazar a un buen cliente). Umbral: **0,56**.
+**Umbral de decisión:** elegido dentro del flujo de validación cruzada sobre train, maximizando F2 (el recall pesa el doble, porque no detectar a un moroso cuesta más que rechazar a un buen cliente). El valor final debe tomarse de la ejecución actual del notebook.
 
 **Resultados en test (usado una única vez):**
 
 | Métrica | Valor |
 |---|---|
-| ROC-AUC | 0,866 (0,862 en validación cruzada: sin sobreajuste) |
-| PR-AUC | 0,396 (un modelo al azar daría 0,067) |
-| Recall | 0,694: detecta a 1.392 de los 2.005 morosos |
-| Precisión | 0,263: 1 de cada 4 alertas es un moroso real |
-| F2 | 0,523 (0,519 en validación cruzada) |
+| ROC-AUC | Se actualiza al ejecutar la evaluación final |
+| PR-AUC | Se actualiza al ejecutar la evaluación final |
+| Recall | Se actualiza al ejecutar la evaluación final |
+| Precisión | Se actualiza al ejecutar la evaluación final |
+| F2 | Se actualiza al ejecutar la evaluación final |
 
 Las variables más importantes son la utilización de crédito revolvente (35%) y las tres variables de atraso (90+ días 19%, 30-59 días 17%, 60-89 días 10%).
 
@@ -99,7 +99,7 @@ Detalle completo en [`notebooks/03_modelo_no_supervisado.ipynb`](notebooks/03_mo
 
 A partir de la devolución recibida:
 
-1. **Umbral de decisión:** antes se elegía probando valores sobre el test; ahora se elige con validación cruzada sobre train y el test se usa una sola vez. Con el mismo criterio, la comparación de modelos pasó a hacerse con la AUC de validación cruzada.
+1. **Umbral de decisión:** antes se elegía probando valores sobre el test; ahora se elige dentro de los folds internos de una validación cruzada anidada y el test se usa una sola vez. La comparación de modelos se hace con métricas de validación sobre train.
 2. **Imputación antes del split:** antes la mediana se calculaba con todo el dataset; ahora se calcula dentro de un `Pipeline`, solo con train.
 3. **KMeans y valores extremos:** en la versión anterior, el cluster de mayor riesgo (269 clientes) eran exactamente los registros con código 98, y los perfiles mostraban promedios imposibles (13 en `RevolvingUtilizationOfUnsecuredLines`, 674 en `DebtRatio`). Al tratar los códigos aparte, corregir los ratios y aplicar logaritmo, aparece un segmento de riesgo de 7.831 clientes definido por su comportamiento real. La nueva sección de sensibilidad cuantifica cuánto cambian las asignaciones y las métricas al aplicar este tratamiento, y la estabilidad se controla con ARI entre distintas semillas.
 4. **Notebooks ejecutados de principio a fin** y carpetas `.ipynb_checkpoints` excluidas con `.gitignore`.
