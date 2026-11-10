@@ -82,22 +82,27 @@ Las métricas de calidad no señalan un número de clusters claramente mejor (si
 
 **Hallazgo clave:** sin ver la etiqueta, la segmentación separa perfiles con riesgos de 1,6% a 41,7% (promedio: 6,7%). El segmento de mayor riesgo está definido por el historial de atrasos de 90+ días, en línea con el modelo supervisado.
 
-### Sensibilidad a valores extremos
+### Sensibilidad a valores extremos y estabilidad
 
-Para comprobar que los segmentos no estén definidos solamente por valores anómalos, el notebook 03 incorpora una comparación sobre los mismos clientes:
+Para comprobar que los segmentos no estén definidos por valores anómalos, el notebook 03 compara dos versiones de KMeans (`k = 4`) sobre los mismos 149.731 clientes (sin los 269 con código 96/98):
 
-- **Sin tratamiento:** variables crudas, imputación necesaria para ejecutar KMeans y estandarización, sin `log1p` ni reglas para outliers.
-- **Tratado:** reglas de limpieza del notebook 01, imputación, transformaciones `log1p` y estandarización.
+- **Sin tratamiento:** variables crudas, solo imputación y estandarización, sin `log1p` ni reglas para outliers.
+- **Tratada:** reglas de limpieza del notebook 01, imputación, `log1p` y estandarización.
 
-La comparación informa las métricas internas de clustering (silhouette, Davies-Bouldin y Calinski-Harabasz), los tamaños de los grupos, la participación, la tasa de mora y el porcentaje de clientes cuya asignación cambia. Como los números de cluster son etiquetas arbitrarias, las asignaciones se alinean mediante Hungarian matching antes de calcular ese porcentaje. También se muestran los centroides en unidades originales para identificar qué variables forman cada perfil.
+Como los números de cluster son etiquetas arbitrarias, antes de comparar se alinea cada cluster sin tratamiento con el cluster tratado con el que más clientes comparte (Hungarian matching).
 
-En la ejecución actual de `k = 4`, la solución sin tratamiento obtiene silhouette **0,209**, Davies-Bouldin **1,326** y Calinski-Harabasz **1780,912**. La solución tratada obtiene silhouette **0,182**, Davies-Bouldin **1,536** y Calinski-Harabasz **1929,452**. No hay una mejora uniforme; estos valores no son estrictamente comparables porque cada solución usa un espacio transformado distinto.
+| Cluster tratado | Clientes sin tratamiento | Mora sin tratamiento | Clientes tratado | Mora tratado | Cambio de mora |
+|---|---|---|---|---|---|
+| Jóvenes con uso medio | 55.414 | 7,81% | 33.512 | 7,67% | −0,14 pp |
+| Mayores con poco uso de crédito | 52.873 | 3,08% | 51.393 | 1,64% | −1,44 pp |
+| Ingresos altos y más productos | 38.620 | 6,12% | 56.995 | 5,62% | −0,51 pp |
+| Con atrasos graves previos | 2.824 | 55,17% | 7.831 | 41,72% | −13,45 pp |
 
-El tratamiento reasigna **60,446%** de los clientes. Los clusters tratados quedan con **33.512 (22,38%)**, **51.393 (34,32%)**, **56.995 (38,06%)** y **7.831 (5,23%)** clientes, con tasas de mora de **7,67%**, **1,64%**, **5,62%** y **41,72%**, respectivamente. Frente a los clusters alineados sin tratamiento, la mora cambia **-0,14**, **-1,44**, **-0,51** y **-13,45 puntos porcentuales**.
-
-Los centroides muestran que los perfiles tratados se forman principalmente por utilización del crédito, edad, cantidad de productos e historial de atrasos. El cluster de mayor mora combina utilización **0,78** y **1,50 atrasos de 90+ días**; el de menor mora corresponde a clientes mayores (edad **65,11**) con utilización **0,12**; el perfil joven presenta utilización **0,53**; y el perfil de mayores ingresos concentra **10,27 líneas de crédito**. El tratamiento cambia fuertemente las fronteras, pero los clusters no se explican únicamente por los outliers.
-
-También se evalúa la estabilidad de la solución tratada repitiendo KMeans con cinco semillas y calculando el **Adjusted Rand Index (ARI)** para todos los pares de corridas. El ARI promedio es **0,974** y el mínimo **0,942**, lo que indica alta estabilidad frente a la inicialización, aunque no demuestra por sí solo que los grupos sean naturales ni que sean la única segmentación de negocio válida. Los perfiles se complementan con mediana, percentil 95 y percentil 99 para evitar que los promedios oculten colas largas en `RevolvingUtilizationOfUnsecuredLines`, `DebtRatio` o `MonthlyIncome`.
+- **El tratamiento reasigna al 29,1% de los clientes:** ese porcentaje cambia de cluster al pasar de la versión sin tratamiento a la tratada. Los perfiles se mantienen reconocibles, pero las fronteras cambian.
+- **Sin tratamiento, KMeans aísla un grupo chico de valores extremos:** 2.824 clientes con 55% de mora, aun habiendo sacado los códigos 96/98. Con el tratamiento, el segmento de riesgo pasa a 7.831 clientes definidos por su comportamiento (alta utilización del crédito y atrasos de 90+ días). Esto respalda el tratamiento de outliers.
+- **Las métricas internas no son comparables entre versiones:** sin tratamiento, silhouette 0,209 y Davies-Bouldin 1,326; tratada, 0,182 y 1,536. Cada versión mide distancias en un espacio distinto (con y sin logaritmo), por lo que estas diferencias no indican cuál es mejor.
+- **Estabilidad:** repitiendo KMeans con cinco semillas distintas, el Adjusted Rand Index (ARI) entre corridas es 0,974 en promedio (mínimo 0,942): la segmentación casi no depende de la inicialización. Esto mide estabilidad del algoritmo, no que los grupos sean naturales.
+- **Perfiles robustos:** el notebook complementa los promedios con la mediana y los percentiles 95 y 99 de cada variable por cluster. En ningún cluster quedan valores imposibles: el percentil 99 de la utilización llega a 1,87 y el de `DebtRatio` a 2,37.
 
 Detalle completo en [`notebooks/03_modelo_no_supervisado.ipynb`](notebooks/03_modelo_no_supervisado.ipynb).
 
@@ -107,7 +112,7 @@ A partir de la devolución recibida:
 
 1. **Umbral de decisión:** antes se elegía probando valores sobre el test; ahora se elige con validación cruzada sobre train y el test se usa una sola vez. Con el mismo criterio, la comparación de modelos pasó a hacerse con la AUC de validación cruzada.
 2. **Imputación antes del split:** antes la mediana se calculaba con todo el dataset; ahora se calcula dentro de un `Pipeline`, solo con train.
-3. **KMeans y valores extremos:** en la versión anterior, el cluster de mayor riesgo (269 clientes) eran exactamente los registros con código 98, y los perfiles mostraban promedios imposibles (13 en `RevolvingUtilizationOfUnsecuredLines`, 674 en `DebtRatio`). Al tratar los códigos aparte, corregir los ratios y aplicar logaritmo, aparece un segmento de riesgo de 7.831 clientes definido por su comportamiento real.
+3. **KMeans y valores extremos:** en la versión anterior, el cluster de mayor riesgo (269 clientes) eran exactamente los registros con código 98, y los perfiles mostraban promedios imposibles (13 en `RevolvingUtilizationOfUnsecuredLines`, 674 en `DebtRatio`). Al tratar los códigos aparte, corregir los ratios y aplicar logaritmo, aparece un segmento de riesgo de 7.831 clientes definido por su comportamiento real. Un análisis de sensibilidad cuantifica el efecto del tratamiento (29,1% de clientes reasignados) y la estabilidad de la solución (ARI promedio 0,974).
 4. **Notebooks ejecutados de principio a fin** y carpetas `.ipynb_checkpoints` excluidas con `.gitignore`.
 
 La limpieza también mejoró a la Regresión Logística, que pasó de 0,824 a 0,862 de ROC-AUC en test.
@@ -117,7 +122,8 @@ La limpieza también mejoró a la Regresión Logística, que pasó de 0,824 a 0,
 - La Regresión Logística no se ajustó y quedó cerca del Random Forest (0,855 contra 0,862 en validación cruzada).
 - Con `class_weight="balanced"`, las probabilidades del modelo no son probabilidades reales de mora; habría que calibrarlas si se necesitan.
 - El umbral maximiza F2; en un caso real se elegiría con el costo económico de cada tipo de error.
-- Próximos pasos: probar Gradient Boosting, usar importancia por permutación y validar con datos más recientes.
+- **Validación temporal:** en scoring crediticio lo ideal es entrenar con clientes del pasado y evaluar con clientes más recientes, porque el comportamiento cambia con la economía y con el tipo de clientes (drift). El dataset no tiene una variable de fecha, por lo que no se pudo hacer esa validación; sería el primer paso con datos reales.
+- Próximos pasos: probar Gradient Boosting, usar importancia por permutación y validar el modelo con datos fechados.
 
 ## Estructura del repositorio
 
