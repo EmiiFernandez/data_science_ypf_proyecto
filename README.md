@@ -82,6 +82,23 @@ Las métricas de calidad no señalan un número de clusters claramente mejor (si
 
 **Hallazgo clave:** sin ver la etiqueta, la segmentación separa perfiles con riesgos de 1,6% a 41,7% (promedio: 6,7%). El segmento de mayor riesgo está definido por el historial de atrasos de 90+ días, en línea con el modelo supervisado.
 
+### Sensibilidad a valores extremos
+
+Para comprobar que los segmentos no estén definidos solamente por valores anómalos, el notebook 03 incorpora una comparación sobre los mismos clientes:
+
+- **Sin tratamiento:** variables crudas, imputación necesaria para ejecutar KMeans y estandarización, sin `log1p` ni reglas para outliers.
+- **Tratado:** reglas de limpieza del notebook 01, imputación, transformaciones `log1p` y estandarización.
+
+La comparación informa las métricas internas de clustering (silhouette, Davies-Bouldin y Calinski-Harabasz), los tamaños de los grupos, la participación, la tasa de mora y el porcentaje de clientes cuya asignación cambia. Como los números de cluster son etiquetas arbitrarias, las asignaciones se alinean mediante Hungarian matching antes de calcular ese porcentaje. También se muestran los centroides en unidades originales para identificar qué variables forman cada perfil.
+
+En la ejecución actual de `k = 4`, la solución sin tratamiento obtiene silhouette **0,209**, Davies-Bouldin **1,326** y Calinski-Harabasz **1780,912**. La solución tratada obtiene silhouette **0,182**, Davies-Bouldin **1,536** y Calinski-Harabasz **1929,452**. No hay una mejora uniforme; estos valores no son estrictamente comparables porque cada solución usa un espacio transformado distinto.
+
+El tratamiento reasigna **60,446%** de los clientes. Los clusters tratados quedan con **33.512 (22,38%)**, **51.393 (34,32%)**, **56.995 (38,06%)** y **7.831 (5,23%)** clientes, con tasas de mora de **7,67%**, **1,64%**, **5,62%** y **41,72%**, respectivamente. Frente a los clusters alineados sin tratamiento, la mora cambia **-0,14**, **-1,44**, **-0,51** y **-13,45 puntos porcentuales**.
+
+Los centroides muestran que los perfiles tratados se forman principalmente por utilización del crédito, edad, cantidad de productos e historial de atrasos. El cluster de mayor mora combina utilización **0,78** y **1,50 atrasos de 90+ días**; el de menor mora corresponde a clientes mayores (edad **65,11**) con utilización **0,12**; el perfil joven presenta utilización **0,53**; y el perfil de mayores ingresos concentra **10,27 líneas de crédito**. El tratamiento cambia fuertemente las fronteras, pero los clusters no se explican únicamente por los outliers.
+
+También se evalúa la estabilidad de la solución tratada repitiendo KMeans con cinco semillas y calculando el **Adjusted Rand Index (ARI)** para todos los pares de corridas. El ARI promedio es **0,974** y el mínimo **0,942**, lo que indica alta estabilidad frente a la inicialización, aunque no demuestra por sí solo que los grupos sean naturales ni que sean la única segmentación de negocio válida. Los perfiles se complementan con mediana, percentil 95 y percentil 99 para evitar que los promedios oculten colas largas en `RevolvingUtilizationOfUnsecuredLines`, `DebtRatio` o `MonthlyIncome`.
+
 Detalle completo en [`notebooks/03_modelo_no_supervisado.ipynb`](notebooks/03_modelo_no_supervisado.ipynb).
 
 ## Cambios respecto de la primera entrega
