@@ -1,0 +1,12 @@
+# Proyecto Final - Data Science YPF
+# Los notebooks se ejecutaron con Python 3.13.9.
+# PENDIENTE: fijar las versiones exactas con las que se generaron los resultados
+# (en ese entorno: pip freeze). Con scikit-learn 1.9.1 el notebook 02 elige
+# umbral 0,57 en lugar de 0,56 y la ROC-AUC en test da 0,867 en lugar de 0,866.
+pandas
+numpy
+scikit-learn
+scipy
+matplotlib
+seaborn
+jupyter

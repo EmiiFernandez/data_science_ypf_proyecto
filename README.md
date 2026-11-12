@@ -1,6 +1,13 @@
 # Proyecto Final - Data Science YPF
 
-Proyecto final del curso de Data Science (EnergIA Digital), aplicando de punta a punta el flujo de trabajo aprendido: AED, limpieza de datos, modelo supervisado y modelo no supervisado.
+Proyecto final del curso de Data Science de la Fundación YPF (EnergIA Digital), aplicando de punta a punta el flujo de trabajo aprendido: AED, limpieza de datos, modelo supervisado y modelo no supervisado.
+
+## Integrantes
+
+- Emilia Fernández
+- Noelia Navarro
+- Oscar Sánchez
+- Rodrigo Villablanca
 
 ## Dataset
 
@@ -114,8 +121,54 @@ A partir de la devolución recibida:
 2. **Imputación antes del split:** antes la mediana se calculaba con todo el dataset; ahora se calcula dentro de un `Pipeline`, solo con train.
 3. **KMeans y valores extremos:** en la versión anterior, el cluster de mayor riesgo (269 clientes) eran exactamente los registros con código 98, y los perfiles mostraban promedios imposibles (13 en `RevolvingUtilizationOfUnsecuredLines`, 674 en `DebtRatio`). Al tratar los códigos aparte, corregir los ratios y aplicar logaritmo, aparece un segmento de riesgo de 7.831 clientes definido por su comportamiento real. Un análisis de sensibilidad cuantifica el efecto del tratamiento (29,1% de clientes reasignados) y la estabilidad de la solución (ARI promedio 0,974).
 4. **Notebooks ejecutados de principio a fin** y carpetas `.ipynb_checkpoints` excluidas con `.gitignore`.
+5. **Conexión con el sector energético:** se desarrolla en la sección siguiente, con casos de YPF y fuentes.
 
 La limpieza también mejoró a la Regresión Logística, que pasó de 0,824 a 0,862 de ROC-AUC en test.
+
+## Conexión con el sector energético
+
+El dataset es de crédito, pero el problema de fondo, anticipar qué clientes no van a pagar, es habitual en las empresas de energía. Lo que se traslada es el método, no los datos: con datos del sector habría que reentrenar los modelos.
+
+- **YPF ya mide este riesgo.** En sus estados financieros al 31/12/2025, YPF estima la pérdida crediticia esperada con el enfoque de la NIIF 9, mediante una matriz por tramos de días de atraso. Este proyecto coincide en que el atraso es la señal principal (las tres variables de atraso suman el 46% de la importancia) y muestra que, combinado con la utilización del crédito y otras variables, permite estimar el riesgo cliente por cliente y no solo por tramo.
+- **YPF Agro es el caso más cercano.** Financia a productores la compra de combustibles e insumos y acepta el pago con granos (canje), una modalidad que la compañía decidió mantener en 2026. Son muchos clientes con crédito a plazo, la misma estructura que *Give Me Some Credit*: un scoring sirve para fijar límites y condiciones, y la segmentación para diferenciar la estrategia comercial.
+- **La cobrabilidad impacta en el resultado.** En 2024, parte de la deuda de CAMMESA con las generadoras se canceló con bonos AE38, con una quita importante. En la venta de Metrogas (más de 2,4 millones de usuarios), el valor de la distribuidora depende en parte de cuánto de su cartera se cobra efectivamente.
+- **Crédito para energías renovables.** Financiar paneles solares, termotanques solares o equipos eólicos domésticos es un crédito con inversión inicial alta que se repaga con el ahorro en la factura. Con las variables del dataset:
+  - `MonthlyIncome` y `DebtRatio` permiten verificar que el cliente soporte la cuota sin sobreendeudarse. En este modelo pesan poco (2,4% y 4,1% de la importancia), por lo que funcionan mejor como control de capacidad de pago que como predictores.
+  - El historial de atrasos permite reservar una tasa preferencial ("crédito verde") para el tramo de menor riesgo **estimado por el modelo**. `SeriousDlqin2yrs` no sirve para esto: es lo que ocurre después del otorgamiento.
+  - `NumberRealEstateLoansOrLines` es un indicio de propiedad, no una prueba: un propietario sin deuda tiene 0. En un caso real habría que confirmar la titularidad del inmueble, necesaria para instalar.
+  - Contexto: la Ley 27.424 creó el régimen de generación distribuida (2.520 usuarios-generadores a febrero de 2025, según la Secretaría de Energía); en 2024, el Banco Nación y la Secretaría de Energía lanzaron líneas en cuotas para paneles y termotanques solares; y en octubre de 2026 YPF aprobó tomar el 100% de YPF Luz.
+- **Otros usos del mismo método:** mantenimiento predictivo (una falla de una bomba o un compresor es un evento raro, como la mora: mismo desbalance, misma importancia del recall y del umbral) y segmentación de clientes de estaciones de servicio por patrón de consumo.
+
+**Límites de la traslación:** con datos reales del sector habría que incorporar variables propias (consumo, estacionalidad, actualizaciones tarifarias, inflación) y validar en forma temporal, porque en Argentina el contexto cambia el comportamiento de pago de un año a otro.
+
+### Fuentes
+
+| Dato | Fuente |
+|---|---|
+| YPF estima la pérdida crediticia esperada con NIIF 9 y una matriz por tramos de atraso | [Estados financieros de YPF S.A. al 31/12/2025](https://inversores.ypf.com/documents/asamblea-accionistas/2026/Asamblea30-04-2026-EEFFdeYPFSAal31-12-2025.pdf) |
+| YPF Agro financia a productores y mantiene el canje de granos en 2026 | [La Nación, 05/05/2026](https://www.lanacion.com.ar/economia/campo/ypf-suspendio-la-busqueda-de-un-socio-para-su-negocio-agro-y-ahora-lo-relanzaria-nid05052026/) · [LM Neuquén](https://masp.lmneuquen.com/agricultura/ypf-dio-marcha-atras-la-venta-agro-y-apuesta-una-transformacion-total-del-negocio-n1239843) |
+| Pago de la deuda de CAMMESA con bonos AE38 (2024) | [Infobae, 10/05/2024](https://www.infobae.com/economia/2024/05/10/algunas-empresas-de-energia-aceptaron-la-propuesta-de-caputo-para-el-pago-de-la-deuda-de-cammesa/) |
+| Venta de Metrogas a Edenor (US$780 millones, sujeta a condiciones de cierre) | [Hecho relevante de YPF ante la SEC (6-K), 10/08/2026](https://www.sec.gov/Archives/edgar/data/0000904851/000155485526001764/MainDocument.htm) |
+| Usuarios-generadores de la Ley 27.424 (2.520 a febrero de 2025) | [Secretaría de Energía, reporte de avance de febrero de 2025](https://argentina.gob.ar/sites/default/files/ppt_reporte_de_avance_febrero_2025.pdf) |
+| Líneas del Banco Nación para paneles y termotanques solares (2024) | [Ámbito](https://www.ambito.com/economia/banco-nacion-lanza-creditos-comprar-electrodomesticos-tasa-del-43-y-plazo-5-anos-n6045754/amp) · [La Nación, 08/08/2024](https://www.lanacion.com.ar/economia/televisores-heladeras-y-lavarropas-como-es-el-programa-oficial-de-creditos-con-cuotas-a-cinco-anos-nid08082024/) |
+| YPF toma el 100% de YPF Luz (octubre de 2026) | [Forbes Argentina](https://www.forbesargentina.com/negocios/ypf-pago-us-430-millones-25-ypf-luz-ya-controla-total-compania-n99853) |
+| Importancia de variables del modelo (46% atrasos, 2,4% ingreso, 4,1% `DebtRatio`, 1,9% inmuebles) | [`notebooks/02_modelo_supervisado.ipynb`](notebooks/02_modelo_supervisado.ipynb), sección 7 |
+
+## Presentación final
+
+La presentación *¿Quién no va a pagar?* expone el proyecto en 11 bloques:
+
+1. **Introducción:** el problema y el dataset.
+2. **Objetivo:** predecir la mora, segmentar sin usar la etiqueta y proponer qué hacer con cada perfil.
+3. **Hipótesis:** H1, el atraso y la utilización del crédito predicen la mora; H2, la segmentación separa el riesgo.
+4. **Metodología:** el test se usa una sola vez y las decisiones se toman con validación cruzada.
+5. **Limpieza de datos:** valores anómalos tratados con reglas fijas, sin eliminar filas.
+6. **Preparación para el análisis:** división estratificada, métrica F2 y `class_weight="balanced"`.
+7. **Random Forest:** comparación de modelos y ajuste con `GridSearchCV`.
+8. **Predicción vs. realidad:** matriz de confusión con el umbral 0,56.
+9. **KMeans:** cuatro segmentos con mora de 1,6% a 41,7%.
+10. **Conclusiones:** la calidad de los datos pesó más que el algoritmo.
+11. **Propuesta y sector energético:** riesgo comercial (YPF Agro y crédito verde para renovables), mantenimiento predictivo y segmentación de clientes de estaciones, con la NIIF 9 como base.
 
 ## Limitaciones y próximos pasos
 
@@ -132,4 +185,8 @@ dataset/        Dataset original (Kaggle) y versión limpia generada en el AED
 notebooks/      01_analisis_exploratorio.ipynb, 02_modelo_supervisado.ipynb, 03_modelo_no_supervisado.ipynb
 ```
 
-Para reproducir los resultados, ejecutar los notebooks en orden: el 01 genera `dataset/cs-training-clean.csv`, que leen el 02 y el 03.
+```
+pip install -r requirements.txt
+```
+
+Para reproducir los resultados, ejecutar los notebooks en orden: el 01 genera `dataset/cs-training-clean.csv`, que leen el 02 y el 03. Los resultados se obtuvieron con Python 3.13.9. Los notebooks 01 y 03 son estables entre versiones de las librerías; el 02 puede variar levemente con otra versión de scikit-learn (con la 1.9.1, el umbral elegido es 0,57 y la ROC-AUC en test, 0,867).
