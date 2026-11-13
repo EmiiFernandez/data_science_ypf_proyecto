@@ -189,4 +189,4 @@ notebooks/      01_analisis_exploratorio.ipynb, 02_modelo_supervisado.ipynb, 03_
 pip install -r requirements.txt
 ```
 
-Para reproducir los resultados, ejecutar los notebooks en orden: el 01 genera `dataset/cs-training-clean.csv`, que leen el 02 y el 03. Los resultados se obtuvieron con Python 3.13.9. Los notebooks 01 y 03 son estables entre versiones de las librerías; el 02 puede variar levemente con otra versión de scikit-learn (con la 1.9.1, el umbral elegido es 0,57 y la ROC-AUC en test, 0,867).
+Para reproducir los resultados, ejecutar los notebooks en orden: el 01 genera `dataset/cs-training-clean.csv`, que leen el 02 y el 03. `requirements.txt` fija versiones probadas con Python 3.12.10: con ellas, los notebooks 01 y 03 reproducen exactamente los resultados entregados, y el 02 da umbral 0,57 y ROC-AUC 0,867 en test. Los notebooks entregados se ejecutaron con Python 3.13.9 y muestran 0,56 y 0,866: la diferencia se debe a la versión de scikit-learn, no al código.
